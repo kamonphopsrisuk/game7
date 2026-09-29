@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>เกมจับคู่การ์ด วิทยาการคำนวณ ป.1 (CS Concept Memory)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Prompt & Kanit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700;800&family=Prompt:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            font-family: 'Prompt', 'Kanit', sans-serif;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: radial-gradient(circle at top left, #1e1b4b, #312e81, #0f172a);
+            color: #f8fafc;
+            user-select: none;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* Glassmorphism styling */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 2px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+        }
+
+        /* Interactive Kid-friendly buttons */
+        .btn-press {
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 6px 0 rgba(0, 0, 0, 0.3);
+        }
+        .btn-press:active:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+        }
+        .btn-press:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* 3D Card Flip CSS System */
+        .card-perspective {
+            perspective: 1000px;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card.matched .card-back {
+            border-color: #4ade80 !important;
+            box-shadow: 0 0 20px rgba(74, 222, 128, 0.8), inset 0 0 15px rgba(74, 222, 128, 0.3);
+            animation: matchPulse 0.6s ease-in-out;
+        }
+
+        .card.shake .card-inner {
+            animation: shakeCard 0.4s ease-in-out;
+        }
+
+        @keyframes matchPulse {
+            0% { transform: rotateY(180deg) scale(1); }
+            50% { transform: rotateY(180deg) scale(1.08); }
+            100% { transform: rotateY(180deg) scale(1); }
+        }
+
+        @keyframes shakeCard {
+            0%, 100% { transform: rotateY(180deg) translateX(0); }
+            20% { transform: rotateY(180deg) translateX(-8px); }
+            40% { transform: rotateY(180deg) translateX(8px); }
+            60% { transform: rotateY(180deg) translateX(-4px); }
+            80% { transform: rotateY(180deg) translateX(4px); }
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem;
+        }
+
+        .card-front {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 3px solid #38bdf8;
+            transform: rotateY(180deg);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-8px) rotate(2deg); }
+        }
+        .animate-float {
+            animation: float 3.5s ease-in-out infinite;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.7); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop {
+            animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* Confetti Canvas */
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 60;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- Victory Confetti Canvas Container -->
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- Header Navigation Bar -->
+    <header class="w-full max-w-5xl mx-auto px-4 pt-4 pb-2">
+        <div class="glass-panel rounded-3xl p-3 sm:p-4 flex flex-wrap justify-between items-center gap-3 shadow-2xl">
+            <!-- App Logo & Title -->
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="showLevelSelect()">
+                <div class="w-12 h-12 bg-gradient-to-tr from-cyan-400 to-blue-600 rounded-2xl flex items-center justify-center text-2xl shadow-lg animate-float">
+                    🎴
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-sky-300 via-indigo-200 to-pink-300 leading-tight">
+                        จับคู่การ์ด วิทยาการคำนวณ ป.1
+                    </h1>
+                    <p class="text-xs text-sky-300 font-semibold hidden sm:block">เรียนรู้ทักษะดิจิทัลผ่านความสนุก ⭐</p>
+                </div>
+            </div>
+
+            <!-- Action Controls & Info -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- CS Concept Dictionary Button -->
+                <button onclick="openDictModal()" class="btn-press bg-purple-600/80 hover:bg-purple-500 border border-purple-400/50 text-white rounded-2xl px-3 py-2 flex items-center gap-1.5 font-bold text-xs sm:text-sm">
+                    <span class="text-base">📚</span>
+                    <span class="hidden sm:inline">คลังคำศัพท์</span>
+                </button>
+
+                <!-- Sound FX Toggle -->
+                <button id="sound-btn" onclick="toggleSound()" class="btn-press bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sky-400 rounded-2xl w-10 h-10 flex items-center justify-center text-lg">
+                    <i id="sound-icon" class="fas fa-volume-up"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Interactive Gaming Container -->
+    <main class="flex-1 w-full max-w-5xl mx-auto p-4 flex flex-col justify-center relative">
+
+        <!-- LEVEL SELECTION SELECTOR TABS -->
+        <div id="level-tabs-container" class="w-full max-w-2xl mx-auto mb-4 glass-panel p-2 rounded-2xl flex justify-between gap-1 shadow-lg">
+            <button id="tab-lvl-1" onclick="changeLevel(1)" class="btn-press flex-1 py-2.5 px-2 rounded-xl text-xs sm:text-sm font-extrabold transition flex flex-col sm:flex-row items-center justify-center gap-1 bg-emerald-600 text-white shadow-md">
+                <span>🌱 ง่าย</span>
+                <span class="text-[10px] opacity-80">(4 คู่)</span>
+            </button>
+            <button id="tab-lvl-2" onclick="changeLevel(2)" class="btn-press flex-1 py-2.5 px-2 rounded-xl text-xs sm:text-sm font-extrabold transition flex flex-col sm:flex-row items-center justify-center gap-1 bg-slate-800 text-slate-300 hover:text-white">
+                <span>⚡ ปานกลาง</span>
+                <span class="text-[10px] opacity-80">(6 คู่)</span>
+            </button>
+            <button id="tab-lvl-3" onclick="changeLevel(3)" class="btn-press flex-1 py-2.5 px-2 rounded-xl text-xs sm:text-sm font-extrabold transition flex flex-col sm:flex-row items-center justify-center gap-1 bg-slate-800 text-slate-300 hover:text-white">
+                <span>🔥 ท้าทาย</span>
+                <span class="text-[10px] opacity-80">(8 คู่)</span>
+            </button>
+        </div>
+
+        <!-- GAMEPLAY ANALYTICS DASHBOARD BAR -->
+        <div class="w-full max-w-4xl mx-auto mb-4 glass-panel rounded-2xl p-3 sm:p-4 grid grid-cols-2 sm:grid-cols-5 gap-2 text-center items-center shadow-lg">
+            <!-- Timer Analytics -->
+            <div class="bg-slate-900/60 border border-slate-700/80 rounded-xl p-2">
+                <span class="text-[10px] font-bold text-slate-400 block uppercase">⏱️ เวลา</span>
+                <span id="timer-display" class="text-base sm:text-lg font-black text-cyan-300">00:00</span>
+            </div>
+
+            <!-- Flips Analytics -->
+            <div class="bg-slate-900/60 border border-slate-700/80 rounded-xl p-2">
+                <span class="text-[10px] font-bold text-slate-400 block uppercase">🔄 เปิดการ์ด</span>
+                <span id="flips-display" class="text-base sm:text-lg font-black text-indigo-300">0 ครั้ง</span>
+            </div>
+
+            <!-- Pair Tracker Analytics -->
+            <div class="bg-slate-900/60 border border-slate-700/80 rounded-xl p-2">
+                <span class="text-[10px] font-bold text-slate-400 block uppercase">🎯 จับคู่สำเร็จ</span>
+                <span id="pairs-display" class="text-base sm:text-lg font-black text-emerald-400">0 / 4</span>
+            </div>
+
+            <!-- Dynamic Star Rating -->
+            <div class="bg-slate-900/60 border border-slate-700/80 rounded-xl p-2">
+                <span class="text-[10px] font-bold text-slate-400 block uppercase">⭐ ประเมินดาว</span>
+                <span id="stars-live-display" class="text-base sm:text-lg text-amber-300 tracking-wider">⭐⭐⭐</span>
+            </div>
+
+            <!-- Hint Button & Restart -->
+            <div class="col-span-2 sm:col-span-1 flex gap-2">
+                <button id="hint-btn" onclick="useHint()" class="btn-press flex-1 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-300 rounded-xl py-2 font-bold text-xs flex items-center justify-center gap-1">
+                    <span>💡 คำใบ้</span>
+                    <span id="hint-count-badge" class="bg-amber-400 text-slate-950 rounded-full w-4 h-4 text-[10px] flex items-center justify-center font-black">2</span>
+                </button>
+                <button onclick="restartGame()" class="btn-press bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 rounded-xl p-2 font-bold text-xs flex items-center justify-center">
+                    <i class="fas fa-rotate-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- CARD GRID PLAYFIELD CONTAINER -->
+        <div id="card-grid" class="w-full max-w-4xl mx-auto grid gap-3 sm:gap-4 justify-center items-center min-h-[380px] p-2">
+            <!-- Dynamic Cards Injected via JavaScript -->
+        </div>
+
+    </main>
+
+    <!-- Custom Toast Notification -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 hidden glass-card border-2 border-cyan-400/80 px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-pop">
+        <span id="toast-icon" class="text-2xl">💡</span>
+        <p id="toast-msg" class="text-sm font-bold text-white">ข้อความแจ้งเตือน</p>
+    </div>
+
+    <!-- CS Concept Dictionary Modal -->
+    <div id="dict-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel border-2 border-purple-400/50 rounded-3xl max-w-2xl w-full p-6 animate-pop flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3">
+                <h3 class="text-lg sm:text-xl font-bold text-purple-300 flex items-center gap-2">
+                    <span>📚</span> คลังคำศัพท์ วิทยาการคำนวณ ป.1
+                </h3>
+                <button onclick="closeDictModal()" class="text-slate-400 hover:text-white text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Dictionary Grid List -->
+            <div id="dict-list" class="flex-1 overflow-y-auto space-y-3 pr-2">
+                <!-- Injected via JavaScript -->
+            </div>
+
+            <button onclick="closeDictModal()" class="btn-press w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold py-3 rounded-2xl mt-4">
+                เข้าใจแล้ว ปิดหน้าต่าง
+            </button>
+        </div>
+    </div>
+
+    <!-- Victory Celebration Modal -->
+    <div id="victory-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel border-4 border-amber-400 rounded-3xl max-w-md w-full p-6 sm:p-8 text-center animate-pop relative overflow-hidden">
+            <div class="text-6xl sm:text-7xl mb-2 animate-float">🎉🏆</div>
+            <h3 class="text-2xl sm:text-3xl font-extrabold text-amber-300 mb-1">ยินดีด้วย! ผ่านด่านแล้ว</h3>
+            <p id="victory-subtitle" class="text-xs sm:text-sm text-slate-300 mb-4">คุณคือสุดยอดนักคิดเชิงคำนวณรุ่นจิ๋ว!</p>
+
+            <!-- Stars Rating Summary -->
+            <div id="victory-stars" class="text-4xl text-amber-400 mb-4 tracking-widest animate-pulse">
+                ⭐⭐⭐
+            </div>
+
+            <!-- Stats Analytics Table -->
+            <div class="bg-slate-900/80 border border-slate-700 rounded-2xl p-4 mb-6 grid grid-cols-2 gap-3 text-center">
+                <div class="bg-slate-800/60 p-2 rounded-xl border border-slate-700">
+                    <span class="text-[10px] text-slate-400 block">⏱️ เวลาที่ใช้</span>
+                    <span id="victory-time" class="text-lg font-extrabold text-cyan-300">00:45</span>
+                </div>
+                <div class="bg-slate-800/60 p-2 rounded-xl border border-slate-700">
+                    <span class="text-[10px] text-slate-400 block">🔄 จำนวนครั้งที่เปิด</span>
+                    <span id="victory-flips" class="text-lg font-extrabold text-indigo-300">10 ครั้ง</span>
+                </div>
+            </div>
+
+            <!-- Action Modal Buttons -->
+            <div class="flex gap-3">
+                <button onclick="closeVictoryModal(); restartGame();" class="btn-press flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold py-3 rounded-2xl text-xs sm:text-sm">
+                    <i class="fas fa-rotate-right mr-1"></i> เล่นอีกครั้ง
+                </button>
+                <button id="next-level-btn" onclick="nextLevelFromModal()" class="btn-press flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold py-3 rounded-2xl text-xs sm:text-sm shadow-lg">
+                    ด่านถัดไป <i class="fas fa-arrow-right ml-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* Modern Web Audio API Synth Engine (No external sound file dependencies) */
+        class WebAudioSynth {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioCtx();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playFlip() {
+                if (this.muted) return;
+                this.init();
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(450, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(850, this.ctx.currentTime + 0.08);
+                    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.08);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.08);
+                } catch (e) { console.error(e); }
+            }
+
+            playMatch() {
+                if (this.muted) return;
+                this.init();
+                // Play ascending joyful duo-tone chime: C5 -> E5 -> G5 -> C6
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, i) => {
+                    setTimeout(() => {
+                        try {
+                            const osc = this.ctx.createOscillator();
+                            const gain = this.ctx.createGain();
+                            osc.type = 'triangle';
+                            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                            gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.22);
+                            osc.connect(gain);
+                            gain.connect(this.ctx.destination);
+                            osc.start();
+                            osc.stop(this.ctx.currentTime + 0.22);
+                        } catch (e) { console.error(e); }
+                    }, i * 75);
+                });
+            }
+
+            playMismatch() {
+                if (this.muted) return;
+                this.init();
+                // Play gentle low mismatch double thud
+                [220, 180].forEach((freq, i) => {
+                    setTimeout(() => {
+                        try {
+                            const osc = this.ctx.createOscillator();
+                            const gain = this.ctx.createGain();
+                            osc.type = 'sawtooth';
+                            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                            gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+                            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.15);
+                            osc.connect(gain);
+                            gain.connect(this.ctx.destination);
+                            osc.start();
+                            osc.stop(this.ctx.currentTime + 0.15);
+                        } catch (e) { console.error(e); }
+                    }, i * 110);
+                });
+            }
+
+            playVictory() {
+                if (this.muted) return;
+                this.init();
+                // Festive Fanfare Synth Sequence
+                const melody = [
+                    { f: 523.25, d: 0.12 },
+                    { f: 659.25, d: 0.12 },
+                    { f: 783.99, d: 0.12 },
+                    { f: 1046.50, d: 0.28 },
+                    { f: 880.00, d: 0.14 },
+                    { f: 1046.50, d: 0.45 }
+                ];
+                let delay = 0;
+                melody.forEach(note => {
+                    setTimeout(() => {
+                        try {
+                            const osc = this.ctx.createOscillator();
+                            const gain = this.ctx.createGain();
+                            osc.type = 'sine';
+                            osc.frequency.setValueAtTime(note.f, this.ctx.currentTime);
+                            gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + note.d);
+                            osc.connect(gain);
+                            gain.connect(this.ctx.destination);
+                            osc.start();
+                            osc.stop(this.ctx.currentTime + note.d);
+                        } catch (e) { console.error(e); }
+                    }, delay * 1000);
+                    delay += note.d * 0.85;
+                });
+            }
+        }
+
+        const audioSynth = new WebAudioSynth();
+
+        function toggleSound() {
+            audioSynth.muted = !audioSynth.muted;
+            const icon = document.getElementById('sound-icon');
+            if (audioSynth.muted) {
+                icon.className = "fas fa-volume-mute text-slate-500";
+            } else {
+                icon.className = "fas fa-volume-up text-sky-400";
+                audioSynth.playFlip();
+            }
+        }
+
+        /* Grade 1 CS Concept Cards Data */
+        const CS_VOCABULARY_DATABASE = [
+            { id: 'forward', emoji: '⬆️', name: 'เดินหน้า', desc: 'การสั่งให้หุ่นยนต์ก้าวไปข้างหน้า 1 ก้าว' },
+            { id: 'left', emoji: '⬅️', name: 'เลี้ยวซ้าย', desc: 'การหมุนหุ่นยนต์ไปทางทิศซ้าย' },
+            { id: 'right', emoji: '➡️', name: 'เลี้ยวขวา', desc: 'การหมุนหุ่นยนต์ไปทางทิศขวา' },
+            { id: 'bug', emoji: '🐞', name: 'บั๊ก (Bug)', desc: 'ข้อผิดพลาดในคำสั่งที่ต้องค้นหาและแก้ไข' },
+            { id: 'robot', emoji: '🤖', name: 'หุ่นยนต์', desc: 'เพื่อนดิจิทัลที่ทำงานตามสั่งได้อย่างแม่นยำ' },
+            { id: 'classify', emoji: '🗂️', name: 'จัดหมวดหมู่', desc: 'การแยกสิ่งของออกเป็นกลุ่มๆ ตามลักษณะที่เหมือนกัน' },
+            { id: 'pixel', emoji: '🔳', name: 'พิกเซล', desc: 'จุดสีเล็กๆ บนหน้าจอที่ประกอบรวมกันเป็นภาพ' },
+            { id: 'goal', emoji: '🎯', name: 'จุดหมาย', desc: 'เป้าหมายปลายทางที่ต้องการให้หุ่นยนต์เดินทางไปถึง' }
+        ];
+
+        /* Game State Analytics & Logic Variables */
+        let currentLevel = 1; // 1: 4 Pairs (8 Cards), 2: 6 Pairs (12 Cards), 3: 8 Pairs (16 Cards)
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let totalPairs = 4;
+        let flipCount = 0;
+        let timerSeconds = 0;
+        let timerInterval = null;
+        let isBoardLocked = false;
+        let hintsLeft = 2;
+
+        function startTimer() {
+            stopTimer();
+            timerSeconds = 0;
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                timerSeconds++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
+            const secs = (timerSeconds % 60).toString().padStart(2, '0');
+            document.getElementById('timer-display').innerText = `${mins}:${secs}`;
+        }
+
+        function calculateStarRating() {
+            // Benchmark flips threshold based on difficulty level
+            let minFlips = totalPairs * 2;
+            let threeStarMax = minFlips + Math.ceil(totalPairs * 0.8);
+            let twoStarMax = minFlips + (totalPairs * 2);
+
+            if (flipCount <= threeStarMax) return 3;
+            if (flipCount <= twoStarMax) return 2;
+            return 1;
+        }
+
+        function updateAnalyticsUI() {
+            document.getElementById('flips-display').innerText = `${flipCount} ครั้ง`;
+            document.getElementById('pairs-display').innerText = `${matchedPairs} / ${totalPairs}`;
+            
+            const starsCount = calculateStarRating();
+            document.getElementById('stars-live-display').innerText = '⭐'.repeat(starsCount);
+            document.getElementById('hint-count-badge').innerText = hintsLeft;
+        }
+
+        function changeLevel(lvl) {
+            audioSynth.playFlip();
+            currentLevel = lvl;
+
+            // Update Tab UI States
+            for (let i = 1; i <= 3; i++) {
+                const tab = document.getElementById(`tab-lvl-${i}`);
+                if (i === lvl) {
+                    tab.className = "btn-press flex-1 py-2.5 px-2 rounded-xl text-xs sm:text-sm font-extrabold transition flex flex-col sm:flex-row items-center justify-center gap-1 bg-emerald-600 text-white shadow-md";
+                } else {
+                    tab.className = "btn-press flex-1 py-2.5 px-2 rounded-xl text-xs sm:text-sm font-extrabold transition flex flex-col sm:flex-row items-center justify-center gap-1 bg-slate-800 text-slate-300 hover:text-white";
+                }
+            }
+
+            restartGame();
+        }
+
+        function restartGame() {
+            stopTimer();
+            flippedCards = [];
+            matchedPairs = 0;
+            flipCount = 0;
+            isBoardLocked = false;
+            hintsLeft = currentLevel === 1 ? 2 : (currentLevel === 2 ? 3 : 3);
+
+            if (currentLevel === 1) totalPairs = 4;
+            else if (currentLevel === 2) totalPairs = 6;
+            else if (currentLevel === 3) totalPairs = 8;
+
+            updateAnalyticsUI();
+            setupCardsDeck();
+            startTimer();
+        }
+
+        function setupCardsDeck() {
+            // Select vocabulary subset according to totalPairs count
+            const selectedVocab = CS_VOCABULARY_DATABASE.slice(0, totalPairs);
+            
+            // Duplicate to form matching pairs
+            let deck = [];
+            selectedVocab.forEach(item => {
+                deck.push({ ...item, instanceId: `${item.id}-1` });
+                deck.push({ ...item, instanceId: `${item.id}-2` });
+            });
+
+            // Fisher-Yates Shuffle Algorithm
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+
+            cards = deck;
+            renderCardGridHTML();
+        }
+
+        function renderCardGridHTML() {
+            const gridContainer = document.getElementById('card-grid');
+            gridContainer.innerHTML = '';
+
+            // Dynamic Responsive Grid Columns depending on level card count
+            if (cards.length === 8) {
+                gridContainer.className = "w-full max-w-2xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 justify-center items-center p-2";
+            } else if (cards.length === 12) {
+                gridContainer.className = "w-full max-w-3xl mx-auto grid grid-cols-3 sm:grid-cols-4 gap-3 sm:gap-4 justify-center items-center p-2";
+            } else {
+                gridContainer.className = "w-full max-w-4xl mx-auto grid grid-cols-4 gap-2 sm:gap-3.5 justify-center items-center p-2";
+            }
+
+            cards.forEach((card, index) => {
+                const cardEl = document.createElement('div');
+                cardEl.className = "card card-perspective h-32 sm:h-36 w-full";
+                cardEl.id = `card-${index}`;
+                cardEl.onclick = () => flipCard(index);
+
+                cardEl.innerHTML = `
+                    <div class="card-inner">
+                        <!-- Card Front Side (Face Down) -->
+                        <div class="card-front">
+                            <span class="text-3xl sm:text-4xl">🤖</span>
+                            <span class="text-[10px] sm:text-xs font-extrabold text-sky-200 mt-1">CS ป.1</span>
+                        </div>
+                        <!-- Card Back Side (Face Up Concept) -->
+                        <div class="card-back">
+                            <span class="text-4xl sm:text-5xl mb-1">${card.emoji}</span>
+                            <span class="text-xs sm:text-sm font-extrabold text-sky-300 leading-tight">${card.name}</span>
+                        </div>
+                    </div>
+                `;
+
+                gridContainer.appendChild(cardEl);
+            });
+        }
+
+        function flipCard(index) {
+            if (isBoardLocked) return;
+            
+            const cardEl = document.getElementById(`card-${index}`);
+            
+            // Prevent flipping already flipped or matched cards
+            if (!cardEl || cardEl.classList.contains('flipped') || cardEl.classList.contains('matched')) {
+                return;
+            }
+
+            audioSynth.playFlip();
+            cardEl.classList.add('flipped');
+            flippedCards.push({ index, data: cards[index] });
+
+            if (flippedCards.length === 2) {
+                flipCount++;
+                updateAnalyticsUI();
+                checkMatch();
+            }
+        }
+
+        function checkMatch() {
+            isBoardLocked = true;
+            const [card1, card2] = flippedCards;
+
+            if (card1.data.id === card2.data.id) {
+                // Match Found!
+                setTimeout(() => {
+                    audioSynth.playMatch();
+                    
+                    const el1 = document.getElementById(`card-${card1.index}`);
+                    const el2 = document.getElementById(`card-${card2.index}`);
+                    
+                    if (el1) el1.classList.add('matched');
+                    if (el2) el2.classList.add('matched');
+
+                    matchedPairs++;
+                    updateAnalyticsUI();
+                    flippedCards = [];
+                    isBoardLocked = false;
+
+                    // Pronounce vocabulary name using Thai Speech Synthesis
+                    speakThaiConcept(card1.data.name);
+
+                    // Check Level Victory
+                    if (matchedPairs === totalPairs) {
+                        triggerLevelVictory();
+                    }
+                }, 350);
+            } else {
+                // Mismatch
+                setTimeout(() => {
+                    audioSynth.playMismatch();
+                    
+                    const el1 = document.getElementById(`card-${card1.index}`);
+                    const el2 = document.getElementById(`card-${card2.index}`);
+                    
+                    if (el1) el1.classList.add('shake');
+                    if (el2) el2.classList.add('shake');
+
+                    setTimeout(() => {
+                        if (el1) {
+                            el1.classList.remove('flipped');
+                            el1.classList.remove('shake');
+                        }
+                        if (el2) {
+                            el2.classList.remove('flipped');
+                            el2.classList.remove('shake');
+                        }
+                        flippedCards = [];
+                        isBoardLocked = false;
+                    }, 600);
+                }, 500);
+            }
+        }
+
+        /* Text to Speech Voice Feedback for Grade 1 Students */
+        function speakThaiConcept(text) {
+            if ('speechSynthesis' in window && !audioSynth.muted) {
+                try {
+                    window.speechSynthesis.cancel();
+                    const cleanText = text.split('(')[0].trim();
+                    const utterance = new SpeechSynthesisUtterance(cleanText);
+                    utterance.lang = 'th-TH';
+                    utterance.rate = 0.9;
+                    window.speechSynthesis.speak(utterance);
+                } catch (e) { console.error(e); }
+            }
+        }
+
+        function useHint() {
+            if (isBoardLocked) return;
+            if (hintsLeft <= 0) {
+                showToast("ใช้คำใบ้หมดแล้วครับ!", "⚠️");
+                return;
+            }
+
+            hintsLeft--;
+            audioSynth.playFlip();
+            updateAnalyticsUI();
+            isBoardLocked = true;
+
+            // Momentarily reveal all unmatched cards for 1.2 seconds
+            const unmatchedCards = [];
+            cards.forEach((card, idx) => {
+                const el = document.getElementById(`card-${idx}`);
+                if (el && !el.classList.contains('matched') && !el.classList.contains('flipped')) {
+                    el.classList.add('flipped');
+                    unmatchedCards.push(el);
+                }
+            });
+
+            showToast("💡 เปิดการ์ดบอกคำใบ้ชั่วคราว!", "✨");
+
+            setTimeout(() => {
+                unmatchedCards.forEach(el => el.classList.remove('flipped'));
+                isBoardLocked = false;
+            }, 1200);
+        }
+
+        function triggerLevelVictory() {
+            stopTimer();
+            audioSynth.playVictory();
+            launchConfettiBurst();
+
+            const starCount = calculateStarRating();
+            const mins = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
+            const secs = (timerSeconds % 60).toString().padStart(2, '0');
+
+            document.getElementById('victory-stars').innerText = '⭐'.repeat(starCount);
+            document.getElementById('victory-time').innerText = `${mins}:${secs}`;
+            document.getElementById('victory-flips').innerText = `${flipCount} ครั้ง`;
+
+            const nextBtn = document.getElementById('next-level-btn');
+            if (currentLevel >= 3) {
+                nextBtn.classList.add('hidden');
+            } else {
+                nextBtn.classList.remove('hidden');
+            }
+
+            setTimeout(() => {
+                document.getElementById('victory-modal').classList.remove('hidden');
+            }, 600);
+        }
+
+        function closeVictoryModal() {
+            audioSynth.playFlip();
+            document.getElementById('victory-modal').classList.add('hidden');
+        }
+
+        function nextLevelFromModal() {
+            closeVictoryModal();
+            if (currentLevel < 3) {
+                changeLevel(currentLevel + 1);
+            }
+        }
+
+        /* Confetti Burst Particle Canvas Engine */
+        function launchConfettiBurst() {
+            const canvas = document.getElementById('confetti-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const particles = [];
+            const colors = ['#f43f5e', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
+
+            for (let i = 0; i < 90; i++) {
+                particles.push({
+                    x: canvas.width / 2,
+                    y: canvas.height / 2,
+                    vx: (Math.random() - 0.5) * 16,
+                    vy: (Math.random() - 0.8) * 16,
+                    size: Math.random() * 8 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    rotation: Math.random() * 360,
+                    rSpeed: (Math.random() - 0.5) * 10,
+                    life: 1
+                });
+            }
+
+            function animateConfetti() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let alive = false;
+
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.35; // gravity
+                    p.rotation += p.rSpeed;
+                    p.life -= 0.012;
+
+                    if (p.life > 0) {
+                        alive = true;
+                        ctx.save();
+                        ctx.translate(p.x, p.y);
+                        ctx.rotate((p.rotation * Math.PI) / 180);
+                        ctx.fillStyle = p.color;
+                        ctx.globalAlpha = Math.max(0, p.life);
+                        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                        ctx.restore();
+                    }
+                });
+
+                if (alive) {
+                    requestAnimationFrame(animateConfetti);
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }
+
+            animateConfetti();
+        }
+
+        function showToast(msg, icon = "💡") {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            document.getElementById('toast-icon').innerText = icon;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 2500);
+        }
+
+        function openDictModal() {
+            audioSynth.playFlip();
+            const listEl = document.getElementById('dict-list');
+            listEl.innerHTML = '';
+
+            CS_VOCABULARY_DATABASE.forEach(item => {
+                const row = document.createElement('div');
+                row.className = "bg-slate-900/80 border border-slate-700/80 p-3 rounded-2xl flex items-center gap-3 hover:border-purple-400/50 transition";
+                row.innerHTML = `
+                    <div class="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center text-2xl border border-slate-700 shrink-0">
+                        ${item.emoji}
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold text-sky-300 flex items-center gap-2">
+                            ${item.name}
+                            <button onclick="speakThaiConcept('${item.name}')" class="text-xs text-purple-400 hover:text-purple-300">
+                                <i class="fas fa-volume-up"></i>
+                            </button>
+                        </h4>
+                        <p class="text-xs text-slate-300 mt-0.5 leading-relaxed">${item.desc}</p>
+                    </div>
+                `;
+                listEl.appendChild(row);
+            });
+
+            document.getElementById('dict-modal').classList.remove('hidden');
+        }
+
+        function closeDictModal() {
+            audioSynth.playFlip();
+            document.getElementById('dict-modal').classList.add('hidden');
+        }
+
+        function showLevelSelect() {
+            audioSynth.playFlip();
+            restartGame();
+        }
+
+        /* Window Initialization */
+        window.addEventListener('load', () => {
+            restartGame();
+        });
+    </script>
+</body>
+</html>
